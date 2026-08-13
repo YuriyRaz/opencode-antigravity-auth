@@ -3,6 +3,21 @@ import { resolveModelWithTier, resolveModelWithVariant, resolveModelForHeaderSty
 
 describe("resolveModelWithTier", () => {
   describe("Gemini 3 flash models (Issue #109)", () => {
+    it("maps Gemini 3.6 Flash to its real tiered backend IDs", () => {
+      expect(resolveModelWithTier("antigravity-gemini-3.6-flash").actualModel).toBe("gemini-3.6-flash-low");
+      expect(resolveModelWithTier("antigravity-gemini-3.6-flash-medium").actualModel).toBe("gemini-3.6-flash-medium");
+      expect(resolveModelWithTier("antigravity-gemini-3.6-flash-high").actualModel).toBe("gemini-3.6-flash-high");
+    });
+
+    it("maps Gemini 3.5 Flash to the API's Low and Medium backend IDs", () => {
+      expect(resolveModelWithTier("antigravity-gemini-3.5-flash").actualModel).toBe("gemini-3.5-flash-extra-low");
+      expect(resolveModelWithTier("antigravity-gemini-3.5-flash-medium").actualModel).toBe("gemini-3.5-flash-low");
+    });
+
+    it("maps GPT-OSS to its advertised medium backend ID", () => {
+      expect(resolveModelWithTier("antigravity-gpt-oss-120b").actualModel).toBe("gpt-oss-120b-medium");
+    });
+
     it("antigravity-gemini-3-flash gets default thinkingLevel 'low'", () => {
       const result = resolveModelWithTier("antigravity-gemini-3-flash");
       expect(result.actualModel).toBe("gemini-3-flash");

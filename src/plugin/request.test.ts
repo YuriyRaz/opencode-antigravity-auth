@@ -1024,6 +1024,46 @@ it("removes x-api-key header", () => {
     });
 
     describe("Issue #103: model name transformation during quota fallback", () => {
+      it("uses the Gemini 3.6 Flash backend tier selected by the OpenCode variant", () => {
+        const result = prepareAntigravityRequest(
+          "https://generativelanguage.googleapis.com/v1beta/models/antigravity-gemini-3.6-flash:generateContent",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              contents: [],
+              providerOptions: { google: { thinkingLevel: "high" } },
+            }),
+          },
+          mockAccessToken,
+          mockProjectId,
+          undefined,
+          "antigravity"
+        );
+
+        expect(result.effectiveModel).toBe("gemini-3.6-flash-high");
+        expect(JSON.parse(result.init.body as string).model).toBe("gemini-3.6-flash-high");
+      });
+
+      it("uses the Gemini 3.5 Flash backend ID matching the OpenCode variant", () => {
+        const result = prepareAntigravityRequest(
+          "https://generativelanguage.googleapis.com/v1beta/models/antigravity-gemini-3.5-flash:generateContent",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              contents: [],
+              providerOptions: { google: { thinkingLevel: "medium" } },
+            }),
+          },
+          mockAccessToken,
+          mockProjectId,
+          undefined,
+          "antigravity"
+        );
+
+        expect(result.effectiveModel).toBe("gemini-3.5-flash-low");
+        expect(JSON.parse(result.init.body as string).model).toBe("gemini-3.5-flash-low");
+      });
+
       it("transforms gemini-3-flash-preview to gemini-3-flash for antigravity headerStyle", () => {
         const result = prepareAntigravityRequest(
           "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent",

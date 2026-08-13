@@ -48,6 +48,9 @@ export const MODEL_ALIASES: Record<string, string> = {
   "gemini-3-flash-medium": "gemini-3-flash",
   "gemini-3-flash-high": "gemini-3-flash",
 
+  // Antigravity exposes GPT-OSS with a fixed reasoning tier in the model ID.
+  "gpt-oss-120b": "gpt-oss-120b-medium",
+
   // Claude proxy names (gemini- prefix for compatibility)
   "gemini-claude-opus-4-6-thinking-low": "claude-opus-4-6-thinking",
   "gemini-claude-opus-4-6-thinking-medium": "claude-opus-4-6-thinking",
@@ -185,7 +188,11 @@ export function resolveModelWithTier(requestedModel: string, options: ModelResol
   
   let antigravityModel = modelWithoutQuota;
   if (skipAlias) {
-    if (isGemini3Pro && !tier && !isImageModel) {
+    if (/^gemini-3\.6-flash/i.test(modelWithoutQuota)) {
+      antigravityModel = `gemini-3.6-flash-${tier ?? "low"}`;
+    } else if (/^gemini-3\.5-flash/i.test(modelWithoutQuota)) {
+      antigravityModel = tier === "medium" || tier === "high" ? "gemini-3.5-flash-low" : "gemini-3.5-flash-extra-low";
+    } else if (isGemini3Pro && !tier && !isImageModel) {
       antigravityModel = `${modelWithoutQuota}-low`;
     } else if (isGemini3Flash && tier) {
       antigravityModel = baseName;
@@ -285,6 +292,7 @@ export function getModelFamily(model: string): "claude" | "gemini-flash" | "gemi
  */
 export interface VariantConfig {
   thinkingBudget?: number;
+  thinkingLevel?: string;
   googleSearch?: GoogleSearchConfig;
 }
 
@@ -376,22 +384,26 @@ export function resolveModelWithVariant(
     base.configSource = "variant";
   }
 
-  if (!variantConfig.thinkingBudget) {
-    return base;
-  }
-
   const budget = variantConfig.thinkingBudget;
+  const level = variantConfig.thinkingLevel ?? (budget ? budgetToGemini3Level(budget) : undefined);
   const isGemini3 = base.actualModel.toLowerCase().includes("gemini-3");
 
-  if (isGemini3) {
-    const level = budgetToGemini3Level(budget);
+  if (isGemini3 && level) {
     const isAntigravityGemini3Pro = base.quotaPreference === "antigravity" &&
       isGemini3ProModel(base.actualModel);
+    const isAntigravityGemini36Flash = base.quotaPreference === "antigravity" &&
+      /^gemini-3\.6-flash/i.test(base.actualModel);
+    const isAntigravityGemini35Flash = base.quotaPreference === "antigravity" &&
+      /^gemini-3\.5-flash/i.test(base.actualModel);
 
     let actualModel = base.actualModel;
     if (isAntigravityGemini3Pro) {
       const baseModel = base.actualModel.replace(/-(low|medium|high)$/, "");
       actualModel = `${baseModel}-${level}`;
+    } else if (isAntigravityGemini36Flash) {
+      actualModel = `gemini-3.6-flash-${level}`;
+    } else if (isAntigravityGemini35Flash) {
+      actualModel = level === "medium" || level === "high" ? "gemini-3.5-flash-low" : "gemini-3.5-flash-extra-low";
     }
 
     return {
@@ -401,6 +413,10 @@ export function resolveModelWithVariant(
       thinkingBudget: undefined,
       configSource: "variant",
     };
+  }
+
+  if (!budget) {
+    return base;
   }
 
   return {
