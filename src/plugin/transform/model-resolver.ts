@@ -66,6 +66,9 @@ const TIER_REGEX = /-(minimal|low|medium|high)$/;
 const QUOTA_PREFIX_REGEX = /^antigravity-/i;
 const GEMINI_3_PRO_REGEX = /^gemini-3(?:\.\d+)?-pro/i;
 const GEMINI_3_FLASH_REGEX = /^gemini-3(?:\.\d+)?-flash/i;
+const GEMINI_3_5_FLASH_REGEX = /^gemini-3\.5-flash/i;
+const GEMINI_3_6_FLASH_REGEX = /^gemini-3\.6-flash/i;
+const GEMINI_3_7_FLASH_REGEX = /^gemini-3\.7-flash/i;
 
 // ANTIGRAVITY_ONLY_MODELS removed - all models now default to antigravity
 
@@ -140,6 +143,33 @@ function isGemini3FlashModel(model: string): boolean {
   return GEMINI_3_FLASH_REGEX.test(model);
 }
 
+function isGemini35FlashModel(model: string): boolean {
+  return GEMINI_3_5_FLASH_REGEX.test(model);
+}
+
+function isGemini36FlashModel(model: string): boolean {
+  return GEMINI_3_6_FLASH_REGEX.test(model);
+}
+
+function isGemini37FlashModel(model: string): boolean {
+  return GEMINI_3_7_FLASH_REGEX.test(model);
+}
+
+function resolveVersionedGemini3FlashModel(model: string, level: string = "low"): string | undefined {
+  if (isGemini37FlashModel(model)) {
+    return "gemini-3-flash-agent";
+  }
+  if (isGemini36FlashModel(model)) {
+    return `gemini-3.6-flash-${level}`;
+  }
+  if (isGemini35FlashModel(model)) {
+    return level === "medium" || level === "high"
+      ? "gemini-3.5-flash-low"
+      : "gemini-3.5-flash-extra-low";
+  }
+  return undefined;
+}
+
 /**
  * Resolves a model name with optional tier suffix and quota prefix to its actual API model name
  * and corresponding thinking configuration.
@@ -184,14 +214,13 @@ export function resolveModelWithTier(requestedModel: string, options: ModelResol
   //                  gemini-3-flash uses bare name + thinkingLevel param
   // Pro defaults to -low unless an explicit tier is provided
   const isGemini3Pro = isGemini3ProModel(modelWithoutQuota);
-  const isGemini3Flash = isGemini3FlashModel(modelWithoutQuota);
+  const versionedGemini3FlashModel = resolveVersionedGemini3FlashModel(modelWithoutQuota, tier);
+  const isGemini3Flash = !versionedGemini3FlashModel && isGemini3FlashModel(modelWithoutQuota);
   
   let antigravityModel = modelWithoutQuota;
   if (skipAlias) {
-    if (/^gemini-3\.6-flash/i.test(modelWithoutQuota)) {
-      antigravityModel = `gemini-3.6-flash-${tier ?? "low"}`;
-    } else if (/^gemini-3\.5-flash/i.test(modelWithoutQuota)) {
-      antigravityModel = tier === "medium" || tier === "high" ? "gemini-3.5-flash-low" : "gemini-3.5-flash-extra-low";
+    if (versionedGemini3FlashModel) {
+      antigravityModel = versionedGemini3FlashModel;
     } else if (isGemini3Pro && !tier && !isImageModel) {
       antigravityModel = `${modelWithoutQuota}-low`;
     } else if (isGemini3Flash && tier) {
@@ -370,9 +399,12 @@ export function resolveModelForHeaderStyle(
  */
 export function resolveModelWithVariant(
   requestedModel: string,
-  variantConfig?: VariantConfig
+  variantConfig?: VariantConfig,
+  headerStyle?: "antigravity" | "gemini-cli"
 ): ResolvedModel {
-  const base = resolveModelWithTier(requestedModel);
+  const base = headerStyle
+    ? resolveModelForHeaderStyle(requestedModel, headerStyle)
+    : resolveModelWithTier(requestedModel);
 
   if (!variantConfig) {
     return base;
@@ -391,19 +423,16 @@ export function resolveModelWithVariant(
   if (isGemini3 && level) {
     const isAntigravityGemini3Pro = base.quotaPreference === "antigravity" &&
       isGemini3ProModel(base.actualModel);
-    const isAntigravityGemini36Flash = base.quotaPreference === "antigravity" &&
-      /^gemini-3\.6-flash/i.test(base.actualModel);
-    const isAntigravityGemini35Flash = base.quotaPreference === "antigravity" &&
-      /^gemini-3\.5-flash/i.test(base.actualModel);
+    const versionedGemini3FlashModel = base.quotaPreference === "antigravity"
+      ? resolveVersionedGemini3FlashModel(base.actualModel, level)
+      : undefined;
 
     let actualModel = base.actualModel;
     if (isAntigravityGemini3Pro) {
       const baseModel = base.actualModel.replace(/-(low|medium|high)$/, "");
       actualModel = `${baseModel}-${level}`;
-    } else if (isAntigravityGemini36Flash) {
-      actualModel = `gemini-3.6-flash-${level}`;
-    } else if (isAntigravityGemini35Flash) {
-      actualModel = level === "medium" || level === "high" ? "gemini-3.5-flash-low" : "gemini-3.5-flash-extra-low";
+    } else if (versionedGemini3FlashModel) {
+      actualModel = versionedGemini3FlashModel;
     }
 
     return {

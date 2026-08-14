@@ -918,12 +918,11 @@ export function prepareAntigravityRequest(
           requestPayload.providerOptions as Record<string, unknown> | undefined,
           rawGenerationConfig
         );
-        const isGemini3 = effectiveModel.toLowerCase().includes("gemini-3");
 
         log.debug(`[ThinkingResolution] rawModel=${rawModel} resolvedModel=${effectiveModel} resolvedTier=${tierThinkingLevel ?? "none"} variantLevel=${variantConfig?.thinkingLevel ?? "none"} variantBudget=${variantConfig?.thinkingBudget ?? "none"} providerOptions.google=${JSON.stringify((requestPayload.providerOptions as any)?.google ?? null)} generationConfig.thinkingConfig=${JSON.stringify((rawGenerationConfig as any)?.thinkingConfig ?? null)}`);
 
         if (variantConfig) {
-          const resolvedWithVariant = resolveModelWithVariant(requestedModel, variantConfig);
+          const resolvedWithVariant = resolveModelWithVariant(requestedModel, variantConfig, headerStyle);
           effectiveModel = resolvedWithVariant.actualModel;
           tierThinkingLevel = resolvedWithVariant.thinkingLevel ?? tierThinkingLevel;
           tierThinkingBudget = resolvedWithVariant.thinkingBudget ?? tierThinkingBudget;

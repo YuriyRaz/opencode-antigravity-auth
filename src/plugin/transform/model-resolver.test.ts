@@ -9,6 +9,10 @@ describe("resolveModelWithTier", () => {
       expect(resolveModelWithTier("antigravity-gemini-3.6-flash-high").actualModel).toBe("gemini-3.6-flash-high");
     });
 
+    it("maps Gemini 3.7 Flash to its agent backend ID", () => {
+      expect(resolveModelWithTier("antigravity-gemini-3.7-flash").actualModel).toBe("gemini-3-flash-agent");
+    });
+
     it("maps Gemini 3.5 Flash to the API's Low and Medium backend IDs", () => {
       expect(resolveModelWithTier("antigravity-gemini-3.5-flash").actualModel).toBe("gemini-3.5-flash-extra-low");
       expect(resolveModelWithTier("antigravity-gemini-3.5-flash-medium").actualModel).toBe("gemini-3.5-flash-low");
@@ -232,6 +236,35 @@ describe("resolveModelWithVariant", () => {
       expect(result.actualModel).toBe("gemini-3-flash");
       expect(result.thinkingLevel).toBe("medium");
       expect(result.configSource).toBe("variant");
+    });
+
+    it("maps a Gemini 3.6 Flash variant to its tiered backend ID", () => {
+      const result = resolveModelWithVariant("antigravity-gemini-3.6-flash", {
+        thinkingLevel: "high",
+      });
+      expect(result.actualModel).toBe("gemini-3.6-flash-high");
+      expect(result.thinkingLevel).toBe("high");
+      expect(result.configSource).toBe("variant");
+    });
+
+    it("maps a Gemini 3.5 Flash variant to its matching backend ID", () => {
+      const result = resolveModelWithVariant("antigravity-gemini-3.5-flash", {
+        thinkingLevel: "medium",
+      });
+      expect(result.actualModel).toBe("gemini-3.5-flash-low");
+      expect(result.thinkingLevel).toBe("medium");
+      expect(result.configSource).toBe("variant");
+    });
+
+    it("preserves the Gemini CLI model name when applying a variant", () => {
+      const result = resolveModelWithVariant(
+        "antigravity-gemini-3.6-flash",
+        { thinkingLevel: "high" },
+        "gemini-cli"
+      );
+      expect(result.actualModel).toBe("gemini-3.6-flash-preview");
+      expect(result.thinkingLevel).toBe("high");
+      expect(result.quotaPreference).toBe("gemini-cli");
     });
 
     it("maps budget to thinkingLevel for Gemini 3 - high", () => {
