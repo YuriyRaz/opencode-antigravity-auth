@@ -66,9 +66,9 @@ const TIER_REGEX = /-(minimal|low|medium|high)$/;
 const QUOTA_PREFIX_REGEX = /^antigravity-/i;
 const GEMINI_3_PRO_REGEX = /^gemini-3(?:\.\d+)?-pro/i;
 const GEMINI_3_FLASH_REGEX = /^gemini-3(?:\.\d+)?-flash/i;
-const GEMINI_3_5_FLASH_REGEX = /^gemini-3\.5-flash/i;
 const GEMINI_3_6_FLASH_REGEX = /^gemini-3\.6-flash/i;
 const GEMINI_3_7_FLASH_REGEX = /^gemini-3\.7-flash/i;
+const GEMINI_3_8_FLASH_REGEX = /^gemini-3\.8-flash/i;
 
 // ANTIGRAVITY_ONLY_MODELS removed - all models now default to antigravity
 
@@ -143,10 +143,6 @@ function isGemini3FlashModel(model: string): boolean {
   return GEMINI_3_FLASH_REGEX.test(model);
 }
 
-function isGemini35FlashModel(model: string): boolean {
-  return GEMINI_3_5_FLASH_REGEX.test(model);
-}
-
 function isGemini36FlashModel(model: string): boolean {
   return GEMINI_3_6_FLASH_REGEX.test(model);
 }
@@ -155,17 +151,19 @@ function isGemini37FlashModel(model: string): boolean {
   return GEMINI_3_7_FLASH_REGEX.test(model);
 }
 
-function resolveVersionedGemini3FlashModel(model: string, level: string = "low"): string | undefined {
+function isGemini38FlashModel(model: string): boolean {
+  return GEMINI_3_8_FLASH_REGEX.test(model);
+}
+
+function resolveVersionedGemini3FlashModel(model: string, _level: string = "low"): string | undefined {
+  if (isGemini38FlashModel(model)) {
+    return "gemini-3.8-flash-tiered";
+  }
   if (isGemini37FlashModel(model)) {
-    return "gemini-3-flash-agent";
+    return "gemini-3.7-flash-tiered";
   }
   if (isGemini36FlashModel(model)) {
-    return `gemini-3.6-flash-${level}`;
-  }
-  if (isGemini35FlashModel(model)) {
-    return level === "medium" || level === "high"
-      ? "gemini-3.5-flash-low"
-      : "gemini-3.5-flash-extra-low";
+    return "gemini-3.6-flash-tiered";
   }
   return undefined;
 }
