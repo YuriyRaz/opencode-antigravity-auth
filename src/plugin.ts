@@ -13,6 +13,7 @@ import type { AntigravityTokenExchangeResult } from "./antigravity/oauth";
 import { accessTokenExpired, isOAuthAuth, parseRefreshParts, formatRefreshParts } from "./plugin/auth";
 import { promptAddAnotherAccount, promptLoginMode, promptProjectId } from "./plugin/cli";
 import { ensureProjectContext } from "./plugin/project";
+import { updateOpencodeConfig } from "./plugin/config/updater";
 import {
   startAntigravityDebugRequest, 
   logAntigravityDebugResponse,
@@ -1228,6 +1229,17 @@ export const createAntigravityPlugin = (providerId: string) => async (
   
   // Fetch latest Antigravity version from remote API (non-blocking, falls back to hardcoded)
   await initAntigravityVersion();
+
+  // Auto-update opencode.json with current model definitions (non-blocking)
+  // This ensures deprecated models are removed and new models appear without manual action.
+  // Note: OpenCode reads the config before the plugin loads, so changes take effect on the NEXT restart.
+  updateOpencodeConfig().then((result) => {
+    if (result.success) {
+      log.info("auto-update: models written", { path: result.configPath });
+    } else {
+      log.warn("auto-update: failed to write models", { error: result.error });
+    }
+  }).catch(() => {});
   
   // Initialize health tracker for hybrid strategy
   if (config.health_score) {
