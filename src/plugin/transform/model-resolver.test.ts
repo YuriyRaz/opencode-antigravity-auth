@@ -12,11 +12,13 @@ describe("resolveModelWithTier", () => {
     it("maps Gemini 3.7 Flash to -tiered backend ID (daily endpoint requirement)", () => {
       expect(resolveModelWithTier("antigravity-gemini-3.7-flash").actualModel).toBe("gemini-3.7-flash-tiered");
       expect(resolveModelWithTier("antigravity-gemini-3.7-flash-medium").actualModel).toBe("gemini-3.7-flash-tiered");
+      expect(resolveModelWithTier("antigravity-gemini-3.7-flash-high").actualModel).toBe("gemini-3.7-flash-tiered");
     });
 
     it("maps Gemini 3.8 Flash to -tiered backend ID (daily endpoint requirement)", () => {
       expect(resolveModelWithTier("antigravity-gemini-3.8-flash").actualModel).toBe("gemini-3.8-flash-tiered");
       expect(resolveModelWithTier("antigravity-gemini-3.8-flash-medium").actualModel).toBe("gemini-3.8-flash-tiered");
+      expect(resolveModelWithTier("antigravity-gemini-3.8-flash-high").actualModel).toBe("gemini-3.8-flash-tiered");
     });
 
     it("maps GPT-OSS to its advertised medium backend ID", () => {
