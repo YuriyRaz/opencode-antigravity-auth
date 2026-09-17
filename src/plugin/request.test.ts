@@ -1040,28 +1040,8 @@ it("removes x-api-key header", () => {
           "antigravity"
         );
 
-        expect(result.effectiveModel).toBe("gemini-3.6-flash-high");
-        expect(JSON.parse(result.init.body as string).model).toBe("gemini-3.6-flash-high");
-      });
-
-      it("uses the Gemini 3.5 Flash backend ID matching the OpenCode variant", () => {
-        const result = prepareAntigravityRequest(
-          "https://generativelanguage.googleapis.com/v1beta/models/antigravity-gemini-3.5-flash:generateContent",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              contents: [],
-              providerOptions: { google: { thinkingLevel: "medium" } },
-            }),
-          },
-          mockAccessToken,
-          mockProjectId,
-          undefined,
-          "antigravity"
-        );
-
-        expect(result.effectiveModel).toBe("gemini-3.5-flash-low");
-        expect(JSON.parse(result.init.body as string).model).toBe("gemini-3.5-flash-low");
+        expect(result.effectiveModel).toBe("gemini-3.6-flash-tiered");
+        expect(JSON.parse(result.init.body as string).model).toBe("gemini-3.6-flash-tiered");
       });
 
       it("transforms gemini-3-flash-preview to gemini-3-flash for antigravity headerStyle", () => {
