@@ -7,6 +7,7 @@ import {
   EMPTY_SCHEMA_PLACEHOLDER_DESCRIPTION,
   SKIP_THOUGHT_SIGNATURE,
   getRandomizedHeaders,
+  getAntigravityVersion,
   type HeaderStyle,
 } from "../constants";
 import { cacheSignature, getCachedSignature } from "./cache";
@@ -69,7 +70,7 @@ import {
   type ThinkingTier,
 } from "./transform";
 import { detectErrorType } from "./recovery";
-import { getSessionFingerprint, buildFingerprintHeaders, type Fingerprint } from "./fingerprint";
+import { type Fingerprint } from "./fingerprint";
 import type { GoogleSearchConfig } from "./transform/types";
 
 const log = createLogger("request");
@@ -1488,9 +1489,11 @@ export function prepareAntigravityRequest(
         };
 
         if (headerStyle === "antigravity") {
-          wrappedBody.requestType = "agent";
+          wrappedBody.requestType = "general";
           wrappedBody.userAgent = "antigravity";
-          wrappedBody.requestId = "agent-" + crypto.randomUUID();
+          wrappedBody.requestId = crypto.randomUUID();
+          wrappedBody.enabled_credit_types = [];
+          wrappedBody.user_prompt_id = crypto.randomUUID();
         }
         if (wrappedBody.request && typeof wrappedBody.request === 'object') {
           // Use stable session ID for signature caching across multi-turn conversations
@@ -1525,16 +1528,22 @@ export function prepareAntigravityRequest(
   }
 
   if (headerStyle === "antigravity") {
-    // Use randomized headers as the fallback pool for Antigravity mode
-    const selectedHeaders = getRandomizedHeaders("antigravity", requestedModel);
+    // Match agy (antigravity-cli) header fingerprint exactly:
+    // - Electron-style User-Agent (identifies as Electron app, not CLI)
+    // - X-Goog-Api-Client (VS Code Cloud Shell Editor identifier)
+    // - Client-Metadata (IDE type and platform)
+    const antigravityVersion = getAntigravityVersion();
+    const platform = process.platform === "win32" ? "Windows NT 10.0; Win64; x64" : "Macintosh; Intel Mac OS X 10_15_7";
+    const chromeVersion = "138.0.7204.235";
+    const electronVersion = "37.3.1";
 
-    // Antigravity mode: Match Antigravity Manager behavior
-    // AM only sends User-Agent on content requests — no X-Goog-Api-Client, no Client-Metadata header
-    // (ideType=ANTIGRAVITY goes in request body metadata via project.ts, not as a header)
-    const fingerprint = options?.fingerprint ?? getSessionFingerprint();
-    const fingerprintHeaders = buildFingerprintHeaders(fingerprint);
-
-    headers.set("User-Agent", fingerprintHeaders["User-Agent"] || selectedHeaders["User-Agent"]);
+    headers.set("User-Agent", `Mozilla/5.0 (${platform}) AppleWebKit/537.36 (KHTML, like Gecko) Antigravity/${antigravityVersion} Chrome/${chromeVersion} Electron/${electronVersion} Safari/537.36`);
+    headers.set("X-Goog-Api-Client", "google-cloud-sdk vscode_cloudshelleditor/0.1");
+    headers.set("Client-Metadata", JSON.stringify({
+      ideType: "ANTIGRAVITY",
+      platform: process.platform === "win32" ? "WINDOWS" : "MACOS",
+      pluginType: "GEMINI",
+    }));
   } else {
     // Gemini CLI mode: match opencode-gemini-auth Code Assist header set exactly
     headers.set("User-Agent", GEMINI_CLI_HEADERS["User-Agent"]);
