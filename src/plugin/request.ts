@@ -20,6 +20,7 @@ import {
 import { defaultSignatureStore } from "./stores/signature-store";
 import {
   DEBUG_MESSAGE_PREFIX,
+  debugLogToFile,
   isDebugEnabled,
   isDebugTuiEnabled,
   logAntigravityDebugResponse,
@@ -836,11 +837,76 @@ export function prepareAntigravityRequest(
       const parsedBody = JSON.parse(baseInit.body) as Record<string, unknown>;
       const isWrapped = typeof parsedBody.project === "string" && "request" in parsedBody;
 
+      // Debug: log the ORIGINAL body before any transformation
+      const safeDumpStart = (obj: unknown): string => {
+        try { return JSON.stringify(obj, null, 0).substring(0, 1000); } catch { return String(obj); }
+      };
+      debugLogToFile(`[OriginalBody] rawModel=${rawModel} isWrapped=${isWrapped}`);
+      debugLogToFile(`[OriginalBody] topKeys=${Object.keys(parsedBody).join(",")}`);
+      debugLogToFile(`[OriginalBody] fullBody=${safeDumpStart(parsedBody)}`);
+
       if (isWrapped) {
         const wrappedBody = {
           ...parsedBody,
           model: effectiveModel,
         } as Record<string, unknown>;
+
+        // Extract variant thinking config from pre-wrapped body.
+        // OpenCode may send providerOptions at the wrapper level (wrappedBody.providerOptions)
+        // or inside the nested request object (wrappedBody.request.providerOptions).
+        // Check both locations and prefer the one with thinking config.
+        const innerRequest = wrappedBody.request as Record<string, unknown> | undefined;
+
+        // Check wrapper-level providerOptions first (OpenCode's actual format)
+        const wrapperProviderOptions = wrappedBody.providerOptions as Record<string, unknown> | undefined;
+        const innerProviderOptions = innerRequest?.providerOptions as Record<string, unknown> | undefined;
+        const innerGenerationConfig = innerRequest?.generationConfig as Record<string, unknown> | undefined;
+
+        // Debug: dump the full structure to understand what OpenCode sends
+        const safeDump = (obj: unknown): string => {
+          try { return JSON.stringify(obj, null, 0).substring(0, 500); } catch { return String(obj); }
+        };
+        debugLogToFile(`[WrappedPath] rawModel=${rawModel} effectiveModel=${effectiveModel} resolvedTier=${tierThinkingLevel ?? "none"}`);
+        debugLogToFile(`[WrappedPath] wrapper.providerOptions=${safeDump(wrapperProviderOptions)}`);
+        debugLogToFile(`[WrappedPath] innerRequest.providerOptions=${safeDump(innerProviderOptions)}`);
+        debugLogToFile(`[WrappedPath] innerGenerationConfig=${safeDump(innerGenerationConfig)}`);
+        debugLogToFile(`[WrappedPath] fullBodyDump=${safeDump(parsedBody)}`);
+
+        // Prefer wrapper-level providerOptions (OpenCode's format), fallback to inner request
+        const effectiveProviderOptions = wrapperProviderOptions ?? innerProviderOptions;
+
+        const variantConfig = extractVariantThinkingConfig(
+          effectiveProviderOptions,
+          innerGenerationConfig
+        );
+        debugLogToFile(`[WrappedPath] variantConfig=${safeDump(variantConfig)}`);
+
+        if (variantConfig) {
+          const resolvedWithVariant = resolveModelWithVariant(requestedModel, variantConfig, headerStyle);
+          effectiveModel = resolvedWithVariant.actualModel;
+          wrappedBody.model = effectiveModel;
+          tierThinkingLevel = resolvedWithVariant.thinkingLevel ?? tierThinkingLevel;
+          tierThinkingBudget = resolvedWithVariant.thinkingBudget ?? tierThinkingBudget;
+
+          // Update thinkingConfig in the inner request's generationConfig
+          if (innerRequest && (tierThinkingLevel || tierThinkingBudget)) {
+            const innerGenConfig = (innerRequest.generationConfig ?? {}) as Record<string, unknown>;
+            const isGemini3 = effectiveModel.toLowerCase().includes("gemini-3");
+
+            if (isGemini3 && tierThinkingLevel) {
+              innerGenConfig.thinkingConfig = {
+                includeThoughts: true,
+                thinkingLevel: tierThinkingLevel,
+              };
+            } else if (tierThinkingBudget) {
+              innerGenConfig.thinkingConfig = {
+                includeThoughts: true,
+                thinkingBudget: tierThinkingBudget,
+              };
+            }
+            innerRequest.generationConfig = innerGenConfig;
+          }
+        }
 
         // Some callers may already send an Antigravity-wrapped body.
         // We still need to sanitize Claude thinking blocks (remove cache_control)
@@ -920,7 +986,7 @@ export function prepareAntigravityRequest(
           rawGenerationConfig
         );
 
-        log.debug(`[ThinkingResolution] rawModel=${rawModel} resolvedModel=${effectiveModel} resolvedTier=${tierThinkingLevel ?? "none"} variantLevel=${variantConfig?.thinkingLevel ?? "none"} variantBudget=${variantConfig?.thinkingBudget ?? "none"} providerOptions.google=${JSON.stringify((requestPayload.providerOptions as any)?.google ?? null)} generationConfig.thinkingConfig=${JSON.stringify((rawGenerationConfig as any)?.thinkingConfig ?? null)}`);
+        debugLogToFile(`[ThinkingResolution] rawModel=${rawModel} resolvedModel=${effectiveModel} resolvedTier=${tierThinkingLevel ?? "none"} variantLevel=${variantConfig?.thinkingLevel ?? "none"} variantBudget=${variantConfig?.thinkingBudget ?? "none"} providerOptions.google=${JSON.stringify((requestPayload.providerOptions as any)?.google ?? null)} generationConfig.thinkingConfig=${JSON.stringify((rawGenerationConfig as any)?.thinkingConfig ?? null)}`);
 
         if (variantConfig) {
           const resolvedWithVariant = resolveModelWithVariant(requestedModel, variantConfig, headerStyle);

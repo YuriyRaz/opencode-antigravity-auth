@@ -25,42 +25,42 @@ describe("resolveModelWithTier", () => {
       expect(resolveModelWithTier("antigravity-gpt-oss-120b").actualModel).toBe("gpt-oss-120b-medium");
     });
 
-    it("antigravity-gemini-3-flash gets default thinkingLevel 'low'", () => {
+    it("antigravity-gemini-3-flash gets default thinkingLevel 'medium' (matches agy default)", () => {
       const result = resolveModelWithTier("antigravity-gemini-3-flash");
       expect(result.actualModel).toBe("gemini-3-flash");
-      expect(result.thinkingLevel).toBe("low");
+      expect(result.thinkingLevel).toBe("medium");
       expect(result.quotaPreference).toBe("antigravity");
     });
 
-    it("gemini-3-flash gets default thinkingLevel 'low'", () => {
+    it("gemini-3-flash gets default thinkingLevel 'medium' (matches agy default)", () => {
       const result = resolveModelWithTier("gemini-3-flash");
       expect(result.actualModel).toBe("gemini-3-flash");
-      expect(result.thinkingLevel).toBe("low");
+      expect(result.thinkingLevel).toBe("medium");
       expect(result.quotaPreference).toBe("antigravity");
     });
 
-    it("gemini-3-flash-preview gets default thinkingLevel 'low' with antigravity quota", () => {
+    it("gemini-3-flash-preview gets default thinkingLevel 'medium' with antigravity quota", () => {
       const result = resolveModelWithTier("gemini-3-flash-preview");
       expect(result.actualModel).toBe("gemini-3-flash-preview");
-      expect(result.thinkingLevel).toBe("low");
+      expect(result.thinkingLevel).toBe("medium");
       // All Gemini models now default to antigravity
       expect(result.quotaPreference).toBe("antigravity");
     });
   });
 
   describe("Gemini 3 preview models (Issue #115)", () => {
-    it("gemini-3-pro-preview gets default thinkingLevel 'low' with antigravity quota", () => {
+    it("gemini-3-pro-preview gets default thinkingLevel 'medium' with antigravity quota", () => {
       const result = resolveModelWithTier("gemini-3-pro-preview");
       expect(result.actualModel).toBe("gemini-3-pro-preview");
-      expect(result.thinkingLevel).toBe("low");
+      expect(result.thinkingLevel).toBe("medium");
       // All Gemini models now default to antigravity
       expect(result.quotaPreference).toBe("antigravity");
     });
 
-    it("gemini-3.1-pro-preview gets default thinkingLevel 'low' with antigravity quota", () => {
+    it("gemini-3.1-pro-preview gets default thinkingLevel 'medium' with antigravity quota", () => {
       const result = resolveModelWithTier("gemini-3.1-pro-preview");
       expect(result.actualModel).toBe("gemini-3.1-pro-preview");
-      expect(result.thinkingLevel).toBe("low");
+      expect(result.thinkingLevel).toBe("medium");
       expect(result.quotaPreference).toBe("antigravity");
     });
   });
@@ -133,10 +133,10 @@ describe("resolveModelWithTier", () => {
       expect(result.thinkingLevel).toBe("medium");
     });
 
-    it("antigravity-gemini-3.1-pro gets default -low model", () => {
+    it("antigravity-gemini-3.1-pro gets default -medium model (matches agy default)", () => {
       const result = resolveModelWithTier("antigravity-gemini-3.1-pro");
-      expect(result.actualModel).toBe("gemini-3.1-pro-low");
-      expect(result.thinkingLevel).toBe("low");
+      expect(result.actualModel).toBe("gemini-3.1-pro-medium");
+      expect(result.thinkingLevel).toBe("medium");
     });
   });
 

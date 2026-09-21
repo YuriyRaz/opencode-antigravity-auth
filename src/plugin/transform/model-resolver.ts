@@ -220,7 +220,7 @@ export function resolveModelWithTier(requestedModel: string, options: ModelResol
     if (versionedGemini3FlashModel) {
       antigravityModel = versionedGemini3FlashModel;
     } else if (isGemini3Pro && !tier && !isImageModel) {
-      antigravityModel = `${modelWithoutQuota}-low`;
+      antigravityModel = `${modelWithoutQuota}-medium`;
     } else if (isGemini3Flash && tier) {
       antigravityModel = baseName;
     }
@@ -251,10 +251,12 @@ export function resolveModelWithTier(requestedModel: string, options: ModelResol
 
   if (!tier) {
     // Gemini 3 models without explicit tier get a default thinkingLevel
+    // Default to "medium" to match agy's default behavior (agy uses --effort medium)
+    // OpenCode's --variant flag is not passed in the request body, so we use medium as default
     if (isEffectiveGemini3) {
       return {
         actualModel: resolvedModel,
-        thinkingLevel: "low",
+        thinkingLevel: "medium",
         isThinkingModel: true,
         quotaPreference,
         explicitQuota,

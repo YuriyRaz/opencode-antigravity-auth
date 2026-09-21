@@ -715,6 +715,49 @@ it("removes x-api-key header", () => {
       expect(result.streaming).toBe(false);
     });
 
+    it("extracts variant from wrapper-level providerOptions in wrapped body", () => {
+      const wrappedBody = {
+        project: "my-project",
+        providerOptions: { google: { thinkingLevel: "high" } },
+        request: {
+          contents: [{ parts: [{ text: "Hello" }] }],
+        },
+      };
+      const result = prepareAntigravityRequest(
+        "https://generativelanguage.googleapis.com/v1beta/models/antigravity-gemini-3.8-flash:generateContent",
+        { method: "POST", body: JSON.stringify(wrappedBody) },
+        mockAccessToken,
+        mockProjectId,
+        undefined,
+        "antigravity"
+      );
+      expect(result.effectiveModel).toBe("gemini-3.8-flash-tiered");
+      const body = JSON.parse(result.init.body as string);
+      expect(body.request.generationConfig.thinkingConfig.thinkingLevel).toBe("high");
+    });
+
+    it("prefers wrapper-level providerOptions over inner request providerOptions", () => {
+      const wrappedBody = {
+        project: "my-project",
+        providerOptions: { google: { thinkingLevel: "high" } },
+        request: {
+          contents: [{ parts: [{ text: "Hello" }] }],
+          providerOptions: { google: { thinkingLevel: "low" } },
+        },
+      };
+      const result = prepareAntigravityRequest(
+        "https://generativelanguage.googleapis.com/v1beta/models/antigravity-gemini-3.8-flash:generateContent",
+        { method: "POST", body: JSON.stringify(wrappedBody) },
+        mockAccessToken,
+        mockProjectId,
+        undefined,
+        "antigravity"
+      );
+      expect(result.effectiveModel).toBe("gemini-3.8-flash-tiered");
+      const body = JSON.parse(result.init.body as string);
+      expect(body.request.generationConfig.thinkingConfig.thinkingLevel).toBe("high");
+    });
+
     it("does not add Claude auto-caching to wrapped request by default", () => {
       const wrappedBody = {
         project: "my-project",
